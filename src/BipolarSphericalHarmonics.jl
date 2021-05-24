@@ -242,12 +242,12 @@ biposh_flippoints(B12::BSHCache, B21::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2
 biposh_flippoints(B12::BSHCache, B21::BSHCache, θ1, ϕ1, θ2, ϕ2, jm::LM, j1, j2) =
     _biposh_flippoints_j1j2(B12, B21, θ1, ϕ1, θ2, ϕ2, j1, j2, jm)
 
-function _biposh_flippoints_j1j2modes(B12::BSHCache{T}, B21::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm...) where {T}
+@inline function _biposh_flippoints_j1j2modes(B12::BSHCache{T}, B21::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm...) where {T}
     jm_modes = _modes(jm..., j1j2modes)
     TM = _maybestripwrapper(T, _zerostype(T, jm_modes), jm...)
     Y12 = Vector{Union{TM, Nothing}}(undef, length(j1j2modes))
     Y21 = similar(Y12)
-    @inbounds for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
+    for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
         if (j2,j1) in j1j2modes && modeindex(j1j2modes, j2, j1) < indj1j2
             indj2j1 = modeindex(j1j2modes, j2, j1)
             # in this case the bipolar harmonics for (j2,j1) have been computed
@@ -273,7 +273,7 @@ end
 biposh(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes...) = _biposh(SHT, θ1, ϕ1, θ2, ϕ2, j1j2modes, j, m)
 biposh(SHT::SHType, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes...) = _biposh(SHT, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm)
 
-function _biposh_j1j2modes(B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm...) where {T}
+@inline function _biposh_j1j2modes(B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm...) where {T}
     jm_modes = _modes(jm..., j1j2modes)
     TM = _maybestripwrapper(T, _zerostype(T, jm_modes), jm...)
     M = Vector{Union{TM, Nothing}}(undef, length(j1j2modes))
@@ -285,7 +285,7 @@ end
 biposh(B::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes) = _biposh_j1j2modes(B, θ1, ϕ1, θ2, ϕ2, j1j2modes, j, m)
 biposh(B::BSHCache, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes) = _biposh_j1j2modes(B, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm)
 
-function _biposh_j1j2(B, θ1, ϕ1, θ2, ϕ2, j1, j2, jm...)
+@inline function _biposh_j1j2(B, θ1, ϕ1, θ2, ϕ2, j1, j2, jm...)
     jm_filt = _modes_intersect(jm..., j1, j2)
     jm_filt === nothing && return nothing
     Y = _zeros(eltypeY(B), jm_filt)
@@ -334,7 +334,7 @@ function biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, jm:
     j1 in l_range(first(SphericalHarmonicArrays.modes(Y1))) || throw("please compute monopolar harmonics for for j1 = $j1 first")
     j2 in l_range(first(SphericalHarmonicArrays.modes(Y2))) || throw("please compute monopolar harmonics for for j2 = $j2 first")
 
-    Y = @view Y12[(firstindex(Y12) - 1) .+ (1:length(jm_filt))]
+    Y = @view Y12[begin .+ (0:length(jm_filt)-1)]
     Y .= zero.(Y)
 
     for m in _nonnegative(mrange)
@@ -353,7 +353,7 @@ function biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, jm:
             # overall phase of (-1)^(j1 + j2 - j + m) appears in all terms
             overallphase = neg1pow(j1 + j2 + m - jmin)
 
-            @inbounds for j in jrange_m
+            for j in jrange_m
                 Yjminm = YS[(j,-m)]
                 YS[(j,m)] = _conjphase(Yjminm, overallphase, SHType(B))
                 overallphase *= -1
@@ -370,14 +370,19 @@ function biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, jm:
     return Y12
 end
 
+@inline function C_view_j1j2m_j(C, j1, j2, m, jrange)
+    jmin_valid = minimum(degreerange(j1, j2, m))
+    jmin = minimum(jrange)
+    jmin_offset = jmin - jmin_valid
+    Cv = @view C[(begin + jmin_offset) .+ (0:length(jrange)-1)]
+end
+
 function biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, jm::LM{<:Any,SingleValuedRange}, j1::Integer, j2::Integer) where {T}
     jm_filt = _modes_intersect(jm, j1, j2)
     isempty(jm_filt) && return Y12
-    m = first(m_range(jm_filt))
     jrange = l_range(jm_filt)
     length(Y12) >= length(jrange) || throw(ArgumentError("vector must have at least $(length(jrange)) elements, received $(length(Y12))"))
-    jmin, jmax = extrema(jrange)
-    Y = @view Y12[(begin - 1) .+ (1:length(jrange))]
+    Y = @view Y12[begin .+ (0:length(jrange)-1)]
     Y .= zero.(Y)
 
     Y1, Y2 = monopolarharmonics(B)
@@ -385,18 +390,18 @@ function biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, jm:
     j1 in l_range(first(SphericalHarmonicArrays.modes(Y1))) || throw("please compute monopolar harmonics for for j1 = $j1 first")
     j2 in l_range(first(SphericalHarmonicArrays.modes(Y2))) || throw("please compute monopolar harmonics for for j2 = $j2 first")
 
-    jmin_valid = minimum(degreerange(j1, j2, m))
-    jmin_offset = jmin - jmin_valid
-    Cv = @view B.C[(begin + jmin_offset - 1) .+ (1:length(jrange))]
+    m = only(m_range(jm_filt))
+    Cv = C_view_j1j2m_j(B.C, j1, j2, m, jrange)
 
-    @inbounds for m1 in -j1:j1
+    for m1 in -j1:j1
         m2 = m - m1
         abs(m2) > j2 && continue
         clebschgordan!(B.C, B.W3j, j1, m1, j2, m)
         Y1_j1m1 = _parent(Y1[(j1,m1)])
         Y2_j2m2 = _parent(Y2[(j2,m2)])
+        Y1Y2 = _kron(Y1_j1m1, Y2_j2m2)
         for ind in eachindex(Y, Cv)
-            Y[ind] += Cv[ind] * _kron(Y1_j1m1, Y2_j2m2)
+            Y[ind] += Cv[ind] * Y1Y2
         end
     end
 
@@ -406,67 +411,68 @@ end
 # All j for one m for (j1,j2) at the NorthPole
 function biposh!(Y12::AbstractVector{T}, B::BSHCache{T,SH}, θ1::NorthPole, ϕ1, θ2, ϕ2, jm::LM{<:Any,SingleValuedRange}, j1::Integer, j2::Integer) where {T}
     jm_filt = _modes_intersect(jm, j1, j2)
+    isempty(jm_filt) && return Y12
     jrange = l_range(jm_filt)
     length(Y12) >= length(jrange) || throw(ArgumentError("vector must have at least $(length(jrange)) elements, received $(length(Y12))"))
-    Y12_section = @view Y12[(begin - 1) .+ (1:length(jrange))]
-    YS = SHArray(Y12_section, jm_filt)
-    isempty(jm_filt) && return YS
+    Y12_section = @view Y12[begin .+ (0:length(jrange)-1)]
 
-    m = first(m_range(jm_filt))
+    m = only(m_range(jm_filt))
     if abs(m) > j2
         # in this case the value is known to be zero, as the spherical harmonic Ylm(0,ϕ1) == 0 for m != 0
         fill!(Y12_section, zero(eltype(Y12_section)))
-        return YS
+        return Y12
     end
     _, Y2 = monopolarharmonics(B)
-    C = clebschgordan!(B.C, B.W3j, j1, 0, j2, m)
+    clebschgordan!(B.C, B.W3j, j1, 0, j2, m)
+    Cv = C_view_j1j2m_j(B.C, j1, j2, m, jrange)
     Y2_j2m = Y2[(j2,m)]
     Y1_l0_NP = √((2j1+1)/4pi)
-    Cv = @view C[jrange]
     @. Y12_section = Cv * kron(Y1_l0_NP, Y2_j2m)
-    return YS
+    return Y12
 end
 
 function biposh!(Y12::AbstractVector{T}, B::BSHCache{T,SH}, θ1::NorthPole, ϕ1, θ2::NorthPole, ϕ2, jm::LM{<:Any,SingleValuedRange}, j1::Integer, j2::Integer) where {T}
     jm_filt = _modes_intersect(jm, j1, j2)
+    isempty(jm_filt) && return Y12
     jrange = l_range(jm_filt)
     length(Y12) >= length(jrange) || throw(ArgumentError("vector must have at least $(length(jrange)) elements, received $(length(Y12))"))
-    Y12_section = @view Y12[(begin - 1) .+ (1:length(jrange))]
-    YS = SHArray(Y12_section, jm_filt)
-    isempty(jm_filt) && return YS
+    Y12_section = @view Y12[begin .+ (0:length(jrange)-1)]
 
-    m = first(m_range(jm_filt))
+    m = only(m_range(jm_filt))
     if m != 0
         # in this case the value is known to be zero, as the spherical harmonic Ylm(0,ϕ1) == 0 for m != 0
         fill!(Y12_section, zero(eltype(Y12_section)))
-        return YS
+        return Y12
     end
-    C = clebschgordan!(B.C, B.W3j, j1, 0, j2, 0)
+    clebschgordan!(B.C, B.W3j, j1, 0, j2, 0)
+    Cv = C_view_j1j2m_j(B.C, j1, j2, m, jrange)
     Y1_j10_NP = √((2j1+1)/4pi)
     Y2_j20_NP = √((2j2+1)/4pi)
-    Cv = @view C[jrange]
     @. Y12_section = Cv * kron(Y1_j10_NP, Y2_j20_NP)
-    return YS
+    return Y12
 end
 
 function biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2::NorthPole, ϕ2, jm::LM{<:Any,SingleValuedRange}, j1::Integer, j2::Integer) where {T}
-    Y = biposh!(Y12, flip(B), θ2, ϕ2, θ1, ϕ1, jm, j2, j1)
+    biposh!(Y12, flip(B), θ2, ϕ2, θ1, ϕ1, jm, j2, j1)
     jm_filt = _modes_intersect(jm, j1, j2)
+    Y12_section = @view Y12[begin .+ (0:length(jm_filt)-1)]
+    Y = SHArray(Y12_section, jm_filt)
+
     @inbounds for m in m_range(jm_filt)
         jrange = l_range(jm_filt, m)
         jmin = minimum(jrange)
-        phase = (-1)^(j1 + j2 - jmin)
+        phase = neg1pow(j1 + j2 - jmin)
         for j in jrange
             Y[(j,m)] *= phase
             phase *= -1
         end
     end
-    return Y
+    return Y12
 end
 
 ##################################################################################################
 
-function clebschgordan!(C::AbstractVector, w3j::AbstractVector, j1::Integer, m1::Integer, j2::Integer, m::Integer)
+@inline function clebschgordan!(C::AbstractVector, w3j::AbstractVector, j1::Integer, m1::Integer, j2::Integer, m::Integer)
     m2 = m - m1
     # Evaluate the Wigner 3j symbol
     #   /  j  j1  j2 \
@@ -475,15 +481,12 @@ function clebschgordan!(C::AbstractVector, w3j::AbstractVector, j1::Integer, m1:
     jrange = jmin:jmax
     @assert length(C) >= length(jrange) "Clebsch-Gordan vector does not contain enough elements"
 
-    phase = (-1)^(j1 - j2 + m)
-    for (ind, j) in enumerate(jrange)
+    phase = neg1pow(j1 - j2 + m)
+    @inbounds for (ind, j) in enumerate(jrange)
         C[begin - 1 + ind] = w3j[begin - 1 + ind] * √(2j+1) * phase
     end
 
-    # obtain a view of the first jmax - jmin + 1 values with indices jmin:jmax
-    inds = (firstindex(C) - 1) .+ (1:length(jrange))
-    Cv = @view C[OffsetVector(inds, jrange)]
-    return Cv
+    return C
 end
 
 include("precompile.jl")

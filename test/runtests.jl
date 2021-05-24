@@ -82,9 +82,12 @@ function _biposh(m, l1, l2, θ1, ϕ1, θ2, ϕ2, B = cache(SH(), max(l1, l2)))
     for m1 in -l1:l1
         m2 = m - m1
         abs(m2) <= l2 || continue
-        C = BipolarSphericalHarmonics.clebschgordan!(B.C, B.W3j, l1, m1, l2, m)
-        for (ind, j) in enumerate(jrange)
-            Y[ind] += C[j] * Y1[(l1, m1)] * Y2[(l2, m2)]
+        BipolarSphericalHarmonics.clebschgordan!(B.C, B.W3j, l1, m1, l2, m)
+        C = BipolarSphericalHarmonics.C_view_j1j2m_j(B.C, l1, l2, m, jrange)
+        Y1_l1m1 = Y1[(l1, m1)]
+        Y2_l2m2 = Y2[(l2, m2)]
+        for ind in eachindex(Y, C)
+            Y[ind] += C[ind] * Y1_l1m1 * Y2_l2m2
         end
     end
     return Y
@@ -143,32 +146,40 @@ end
     Y12 = zeros(ComplexF64, l1 + l2 + 1);
 
     m = -2;
+    jrange = BipolarSphericalHarmonics.degreerange(l1, l2, m)
+    modes = LM(jrange, m)
+    Y = SHArray((@view Y12[1:length(modes)]), modes)
     for θ2 in LinRange(0, pi, 10), ϕ2 in LinRange(0, 2pi, 10)
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ1, ϕ1, θ2, ϕ2)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
         @test all(iszero, Y)
     end
 
     m = -1;
+    jrange = BipolarSphericalHarmonics.degreerange(l1, l2, m)
+    modes = LM(jrange, m)
+    Y = SHArray((@view Y12[1:length(modes)]), modes)
     for θ2 in LinRange(0, pi, 10), ϕ2 in LinRange(0, 2pi, 10)
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ1, ϕ1, θ2, ϕ2)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
         Y2 = _biposh(m, l1, l2, θ1, ϕ1, θ2, ϕ2, B)
         @test isapproxdefault(Y[(1,-1)], 3/8pi*sin(θ2)*cis(-ϕ2))
         @test isapproxdefault(Y[(2,-1)], 3/8pi*sin(θ2)*cis(-ϕ2))
         @test isapproxdefault(Y, Y2)
 
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ2, ϕ2, θ1, ϕ1)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ2, ϕ2, θ1, ϕ1, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ2, ϕ2, θ1, ϕ1, :, m, l1, l2)
         Y2 = _biposh(m, l1, l2, θ2, ϕ2, θ1, ϕ1, B)
         @test isapproxdefault(Y, Y2)
     end
 
     m = 0;
     jrange = BipolarSphericalHarmonics.degreerange(l1, l2, m)
+    modes = LM(jrange, m)
+    Y = SHArray((@view Y12[1:length(modes)]), modes)
     for θ2 in LinRange(0, pi, 10), ϕ2 in LinRange(0, 2pi, 10)
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ1, ϕ1, θ2, ϕ2)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
         Y2 = _biposh(m, l1, l2, θ1, ϕ1, θ2, ϕ2, B)
         @test isapproxdefault(Y[(0,0)], -√3/4pi * cos(θ2))
         @test isapproxdefault(Y[(1,0)], 0)
@@ -176,30 +187,36 @@ end
         @test isapproxdefault(Y, Y2)
 
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ2, ϕ2, θ1, ϕ1)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ2, ϕ2, θ1, ϕ1, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ2, ϕ2, θ1, ϕ1, :, m, l1, l2)
         Y2 = _biposh(m, l1, l2, θ2, ϕ2, θ1, ϕ1, B)
         @test isapproxdefault(Y, Y2)
     end
 
     m = 1;
+    jrange = BipolarSphericalHarmonics.degreerange(l1, l2, m)
+    modes = LM(jrange, m)
+    Y = SHArray((@view Y12[1:length(modes)]), modes)
     for θ2 in LinRange(0, pi, 10), ϕ2 in LinRange(0, 2pi, 10)
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ1, ϕ1, θ2, ϕ2)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
         Y2 = _biposh(m, l1, l2, θ1, ϕ1, θ2, ϕ2, B)
         @test isapproxdefault(Y[(1,1)], 3/8pi*sin(θ2)*cis(ϕ2))
         @test isapproxdefault(Y[(2,1)], -3/8pi*sin(θ2)*cis(ϕ2))
         @test isapproxdefault(Y, Y2)
 
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ2, ϕ2, θ1, ϕ1)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ2, ϕ2, θ1, ϕ1, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ2, ϕ2, θ1, ϕ1, :, m, l1, l2)
         Y2 = _biposh(m, l1, l2, θ2, ϕ2, θ1, ϕ1, B)
         @test isapproxdefault(Y, Y2)
     end
 
     m = 2;
+    jrange = BipolarSphericalHarmonics.degreerange(l1, l2, m)
+    modes = LM(jrange, m)
+    Y = SHArray((@view Y12[1:length(modes)]), modes)
     for θ2 in LinRange(0, pi, 10), ϕ2 in LinRange(0, 2pi, 10)
         BipolarSphericalHarmonics.monopolarharmonics!(B, θ1, ϕ1, θ2, ϕ2)
-        Y = BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
+        BipolarSphericalHarmonics.biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, :, m, l1, l2)
         @test all(iszero, Y)
     end
 
@@ -1071,5 +1088,22 @@ end
             tend = time()
             @info "Finished testing $YT $B in $(round(tend - tstart, sigdigits = 1)) seconds"
         end
+    end
+end
+
+@testset "allocation" begin
+    θ1, ϕ1, θ2, ϕ2 = pi*rand(), 2pi*rand(), pi*rand(), 2pi*rand()
+
+    function test_alloc(SHT, θ1, ϕ1, θ2, ϕ2)
+        B12 = monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, 1, 1)
+        Y12 = zeros(BipolarSphericalHarmonics.eltypeY(B12), 1)
+        biposh!(Y12, B12, θ1, ϕ1, θ2, ϕ2, 1, 1, 1, 1)
+        @test (@allocated biposh!(Y12, B12, θ1, ϕ1, θ2, ϕ2, 1, 1, 1, 1)) == 0
+    end
+
+    test_alloc(SH(), θ1, ϕ1, θ2, ϕ2)
+    test_alloc(GSH(), θ1, ϕ1, θ2, ϕ2)
+    for YT in [PB(), Hansen(), Irreducible()], B in [Polar(), Cartesian(), HelicityCovariant(), SphericalCovariant()]
+        test_alloc(VSH(YT, B), θ1, ϕ1, θ2, ϕ2)
     end
 end
