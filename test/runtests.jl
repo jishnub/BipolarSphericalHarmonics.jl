@@ -543,27 +543,27 @@ end
         function testswap(SHT, θ1, ϕ1, θ2, ϕ2, j1j2modes)
             B12 = monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, j1j2modes);
             B21 = monopolarharmonics(SHT, θ2, ϕ2, θ1, ϕ1, j1j2modes);
-            Y12, Y21 = biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, :, :, j1j2modes);
+            Y12_alljm, Y21_alljm = biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, :, :, j1j2modes);
             for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
-                Y12_j1j2 = biposh(B12, θ1, ϕ1, θ2, ϕ2, :, :, j1, j2)
-                @test isapproxdefault(Y12[indj1j2], Y12_j1j2)
-                Y21_j1j2 = biposh(B21, θ2, ϕ2, θ1, ϕ1, :, :, j1, j2)
-                @test isapproxdefault(Y21[indj1j2], Y21_j1j2)
+                Y12_j1j2_alljm = biposh(B12, θ1, ϕ1, θ2, ϕ2, :, :, j1, j2)
+                @test isapproxdefault(Y12_alljm[indj1j2], Y12_j1j2_alljm)
+                Y21_j1j2_alljm = biposh(B21, θ2, ϕ2, θ1, ϕ1, :, :, j1, j2)
+                @test isapproxdefault(Y21_alljm[indj1j2], Y21_j1j2_alljm)
             end
             j, m = 1, 1
-            Y12, Y21 = biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes);
+            Y12_jm, Y21_jm = biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes);
             for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
-                Y12_j1j2 = biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
-                if Y12_j1j2 === nothing
-                    @test Y12[indj1j2] === nothing
+                Y12_j1j2_jm = biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+                if Y12_j1j2_jm === nothing
+                    @test Y12_jm[indj1j2] === nothing
                 else
-                    @test isapproxdefault(Y12[indj1j2], Y12_j1j2)
+                    @test isapproxdefault(Y12_jm[indj1j2], Y12_j1j2_jm)
                 end
-                Y21_j1j2 = biposh(B21, θ2, ϕ2, θ1, ϕ1, j, m, j1, j2)
-                if Y21_j1j2 === nothing
-                    @test Y21[indj1j2] === nothing
+                Y21_j1j2_jm = biposh(B21, θ2, ϕ2, θ1, ϕ1, j, m, j1, j2)
+                if Y21_j1j2_jm === nothing
+                    @test Y21_jm[indj1j2] === nothing
                 else
-                    @test isapproxdefault(Y21[indj1j2], Y21_j1j2)
+                    @test isapproxdefault(Y21_jm[indj1j2], Y21_j1j2_jm)
                 end
             end
 
@@ -578,6 +578,7 @@ end
             @test biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, LM(3, 3), 1, 1) === nothing
             @test biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, 3, 3, L2L1Triangle(1:1, 0)) == ([nothing], [nothing])
             @test biposh_flippoints(B12, B21, θ1, ϕ1, θ2, ϕ2, LM(3, 3), L2L1Triangle(1:1, 0)) == ([nothing], [nothing])
+            return nothing
         end
 
         for SHT in [SH(), GSH()]

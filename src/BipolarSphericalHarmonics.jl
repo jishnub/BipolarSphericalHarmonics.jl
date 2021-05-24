@@ -14,14 +14,14 @@ using Base: @propagate_inbounds
 
 abstract type SHType end
 struct SH <:SHType end
-struct VSH{YType, Basis} <:SHType
-    YT :: YType
+struct VSH{VSHType, Basis} <:SHType
+    YT :: VSHType
     B :: Basis
 end
 struct GSH <:SHType end
-struct CG end
 
 export monopolarharmonics
+export monopolarharmonics!
 export biposh
 export biposh!
 export biposh_flippoints
@@ -48,7 +48,7 @@ _bshtype(SHT, C, Y1, Y2) = typeof(C * _kron(Y1, Y2))
 
 function cache(SHT::SHType, T::Type, lmax)
     S1 = _cache(SHT, T, lmax)
-    S2 = deepcopy(S1)
+    S2 = _cache(SHT, T, lmax)
     W = zeros(Cdouble, 2lmax+1)
     C = copy(W)
     TB = _bshtype(SHT, first(C), _parent(first(getY(S1))), _parent(first(getY(S2))))
