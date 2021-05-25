@@ -1,3 +1,6 @@
 [deps]
 BipolarSphericalHarmonics = "e22a7426-82a6-487a-9ac6-2ced2976a2d6"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "0.26"

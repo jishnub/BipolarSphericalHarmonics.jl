@@ -115,10 +115,37 @@ end
 
 @testset "monopolarharmonics" begin
     lmax = 3
+    @testset "SH" begin
+        B = cache(SH(), lmax);
+        YSH1 = computeYlm(pi/2, 0, lmax = lmax)
+        YSH2 = computeYlm(pi/3, pi/4, lmax = lmax)
+        BipolarSphericalHarmonics.monopolarharmonics!(B, pi/2, 0, pi/3, pi/4);
+        Y1, Y2 = monopolarharmonics(B);
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y1)), Y1)
+            @test isapproxdefault(Y, YSH1[(j,m)])
+        end
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y2)), Y2)
+            @test isapproxdefault(Y, YSH2[(j,m)])
+        end
+        BipolarSphericalHarmonics.monopolarharmonics!(B, pi/2, 0, pi/3, pi/4, ((1,2),(2,1)));
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y1)), Y1)
+            @test isapproxdefault(Y, YSH1[(j,m)])
+        end
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y2)), Y2)
+            @test isapproxdefault(Y, YSH2[(j,m)])
+        end
+    end
     @testset "GSH" begin
         B = cache(GSH(), lmax);
         BipolarSphericalHarmonics.monopolarharmonics!(B, pi/2, 0, pi/3, pi/4);
         Y1, Y2 = monopolarharmonics(B);
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y1)), Y1)
+            @test isapproxdefault(Y, genspharm(j, m, pi/2, 0))
+        end
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y2)), Y2)
+            @test isapproxdefault(Y, genspharm(j, m, pi/3, pi/4))
+        end
+        BipolarSphericalHarmonics.monopolarharmonics!(B, pi/2, 0, pi/3, pi/4, ((1,2),(2,1)));
         for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y1)), Y1)
             @test isapproxdefault(Y, genspharm(j, m, pi/2, 0))
         end
@@ -130,6 +157,13 @@ end
         B = cache(VSH(PB(), Polar()), lmax);
         BipolarSphericalHarmonics.monopolarharmonics!(B, pi/2, 0, pi/3, pi/4);
         Y1, Y2 = monopolarharmonics(B);
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y1)), Y1)
+            @test isapproxdefault(Y, vshbasis(PB(), Polar(), j, m, pi/2, 0))
+        end
+        for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y2)), Y2)
+            @test isapproxdefault(Y, vshbasis(PB(), Polar(), j, m, pi/3, pi/4))
+        end
+        BipolarSphericalHarmonics.monopolarharmonics!(B, pi/2, 0, pi/3, pi/4, ((1,2),(2,1)));
         for ((j,m), Y) in zip(first(SphericalHarmonicArrays.modes(Y1)), Y1)
             @test isapproxdefault(Y, vshbasis(PB(), Polar(), j, m, pi/2, 0))
         end

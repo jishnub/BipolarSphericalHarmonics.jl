@@ -7,7 +7,6 @@ using SphericalHarmonics: NorthPole, SouthPole, getY
 import SphericalHarmonics: eltypeY
 using VectorSphericalHarmonics
 using SHTOOLS
-using OffsetArrays
 using LinearAlgebra
 using StaticArrays
 using Base: @propagate_inbounds
@@ -29,6 +28,12 @@ export SH
 export VSH
 export GSH
 
+"""
+    BSHCache
+
+Wrapper around monopolar harmonics that are coupled to evaluate the bipolar harmonics. The cache may be constructed using
+[`cache`](@ref).
+"""
 struct BSHCache{T, ST<:SHType, S, W}
     SHT :: ST
     S1 :: S
@@ -46,6 +51,17 @@ _cache(::GSH, T, lmax) = VectorSphericalHarmonics.VSHCache(T, ML(ZeroTo(lmax)))
 
 _bshtype(SHT, C, Y1, Y2) = typeof(C * _kron(Y1, Y2))
 
+"""
+    cache(SHT, T::Type, j12max)
+
+Allocate the arrays required to evaluate the monopolar harmonics for all modes `0 ≤ j1, j2 ≤ j12max`.
+`SHT` may be one of `SH()`, `GSH()`, or `VSH(YT(), B())` where `YT` and `B` are vector harmonic and basis
+types offered by [`VectorSphericalHarmonics.jl`](https://github.com/jishnub/VectorSphericalHarmonics.jl).
+`T` is a real type that determines the precision of the monopolar harmonics.
+
+!!! note
+    The monopolar harmonics must be initialized by calling [`monopolarharmonics!`](@ref) before the cache is used.
+"""
 function cache(SHT::SHType, T::Type, lmax)
     S1 = _cache(SHT, T, lmax)
     S2 = _cache(SHT, T, lmax)
@@ -89,7 +105,7 @@ end
     kronindex(::VSH, ind11, ind12, ind21, ind22)
 
 Given the indices of each `VSH` matrix, return the corresponding index of the bipolar spherical harmonic.
-Note that the indices correspond to `\\ell - j` for the `Irreducible` vector spherical harmonic ``\\mathbf{Y{^{\\ell}_{jm}(\\hat{n})``.
+Note that the indices correspond to `ℓ - j` for the `Irreducible` vector spherical harmonic ``\\mathbf{Y}^{\\ell}_{jm}(\\hat{n})``.
 """
 function kronindex(::VSH, ind11, ind12, ind21, ind22)
     @assert -1 <= ind11 <= 1 "ind11 must satisfy -1 ≤ ind11 ≤ 1"
@@ -113,7 +129,17 @@ _maybestripwrapper(T, ZT, jm...) = ZT
 _j1j2(B::BSHCache{<:Any, SH}, j1, j2) = (j1,), (j2,)
 _j1j2(B::BSHCache, j1, j2) = (ML(ZeroTo(j1)),), (ML(ZeroTo(j2)),)
 _j1j2(B::BSHCache) = (), ()
+_j1j2(B::BSHCache, j1j2modes) = _j1j2(B, _j12max(j1j2modes)...)
 
+_j12max(j1j2modes::L2L1Triangle) = maximum(l1_range(j1j2modes)), maximum(l2_range(j1j2modes))
+_j12max(j1j2modes) = maximum(first, j1j2modes), maximum(last, j1j2modes)
+
+"""
+    monopolarharmonics!(B::BSHCache, θ1, ϕ1, θ2, ϕ2, j1, j2)
+
+Update `B` with the monopolar harmonics ``Y_{j_1,m_1}(\\theta_1, \\phi_1)`` and ``Y_{j_2,m_2}(\\theta_2, \\phi_2)``,
+where ``Y`` may either be a scalar or a vector harmonic depending on `B`.
+"""
 function monopolarharmonics!(B::BSHCache{<:Any, SH}, θ1, ϕ1, θ2, ϕ2, j1j2...)
     j1tup, j2tup = _j1j2(B, j1j2...)
     computePlmcostheta!(B.S1, θ1, j1tup...)
@@ -137,15 +163,20 @@ function monopolarharmonics!(B::BSHCache{<:Any, <:VSH}, θ1, ϕ1, θ2, ϕ2, j1j2
     return B
 end
 
-function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1::Integer, j2::Integer)
+"""
+    monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, j1, j2)
+
+Evaluate the monopolar harmonics ``Y_{j_1,m_1}(\\theta_1, \\phi_1)`` and ``Y_{j_2,m_2}(\\theta_2, \\phi_2)``,
+where ``Y`` may either be a scalar or a vector harmonic depending on `SHT`, which may be one of `SH()`, `GSH()`,
+or `VSH(YT(), B())` where `YT` and `B` are vector harmonic and basis types offered by
+[`VectorSphericalHarmonics.jl`](https://github.com/jishnub/VectorSphericalHarmonics.jl).
+"""
+function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1, j2)
     T = float(mapreduce(typeof, promote_type, (θ1, ϕ1, θ2, ϕ2)))
     B = cache(SHT, T, max(j1, j2))
     monopolarharmonics!(B, θ1, ϕ1, θ2, ϕ2, j1, j2)
     return B
 end
-
-_j12max(j1j2modes::L2L1Triangle) = maximum(l1_range(j1j2modes)), maximum(l2_range(j1j2modes))
-_j12max(j1j2modes) = maximum(first, j1j2modes), maximum(last, j1j2modes)
 
 function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1j2modes)
     monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, _j12max(j1j2modes)...)
@@ -221,6 +252,15 @@ function _permuteterms(Y12_j2j1_jm::Diagonal{<:Any, <:SVector}, SHT)
 end
 _permuteterms(Y12_j2j1_jm::Number, SHT) = Y12_j2j1_jm
 
+"""
+    biposh_flippoints(SHT, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+
+Evaluate the bipolar harmonics ``Y_{jm}^{j_1, j_2}((\\theta_1, \\phi_1), (\\theta_2, \\phi_2))`` and
+``Y_{jm}^{j_1, j_2}((\\theta_2, \\phi_2), (\\theta_1, \\phi_1))``
+in one pass, utilizing symmetries of the Clebsch-Gordean coefficients.
+"""
+biposh_flippoints
+
 function _biposh_flippoints(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm...)
     B12 = monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, j1j2modes...);
     B21 = monopolarharmonics(SHT, θ2, ϕ2, θ1, ϕ1, j1j2modes...);
@@ -265,6 +305,26 @@ biposh_flippoints(B12::BSHCache, B21::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1j2mo
     _biposh_flippoints_j1j2modes(B12, B21, θ1, ϕ1, θ2, ϕ2, j1j2modes, j, m)
 biposh_flippoints(B12::BSHCache, B21::BSHCache, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes) =
     _biposh_flippoints_j1j2modes(B12, B21, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm)
+
+
+"""
+    biposh(SHT, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+
+Evaluate the bipolar harmonic ``Y_{jm}^{j_1, j_2}((\\theta_1, \\phi_1), (\\theta_2, \\phi_2))``. `SHT` may be one of `SH()`,
+`GSH()` and `VSH(YT(), B())` where `YT` and `B` are vector harmonic and basis types offered by
+[`VectorSphericalHarmonics.jl`](https://github.com/jishnub/VectorSphericalHarmonics.jl).
+
+    biposh(SHT, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes)
+
+Evaluate the bipolar harmonic ``Y_{jm}^{j_1, j_2}((\\theta_1, \\phi_1), (\\theta_2, \\phi_2))`` for all `(j1,j2)` in
+`j1j2modes`.
+
+    biposh(SHT, θ1, ϕ1, θ2, ϕ2, jmcoll::SphericalHarmonicModes.LM, j1j2...)
+
+Evaluate the bipolar harmonics ``Y_{jm}^{j_1, j_2}((\\theta_1, \\phi_1), (\\theta_2, \\phi_2))`` for all `(j,m)` in `jmcoll`,
+where `j1j2` may be either a 2-Tuple `(j1,j2)` or a collection of 2-Tuples.
+"""
+biposh
 
 function _biposh(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm...)
     B = monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, j1j2modes...)
@@ -319,6 +379,14 @@ function _conjphase(Y, phase, ::VSH{<:Any, <:Union{SphericalCovariant, HelicityC
     A
 end
 _conjphase(Y, phase, ::VSH{<:Any, <:Union{Cartesian, Polar}}) = (A = conj(Y); A .* VSHIndexPhase .* phase)
+
+"""
+    biposh!(Y12::AbstractVetor, B::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+
+Evaluate the bipolar harmonic ``Y_{jm}^{j_1, j_2}((\\theta_1, \\phi_1), (\\theta_2, \\phi_2))`` and store the result in `Y12`.
+The cache `B` determines the type of harmonic evaluated.
+"""
+biposh!
 
 biposh!(Y12::AbstractVector{T}, B::BSHCache{T}, θ1, ϕ1, θ2, ϕ2, j, m, j1::Integer, j2::Integer) where {T} =
     biposh!(Y12, B, θ1, ϕ1, θ2, ϕ2, _modes(j, m, j1, j2), j1, j2)
