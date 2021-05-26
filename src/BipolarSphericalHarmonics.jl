@@ -18,6 +18,7 @@ struct VSH{VSHType, Basis} <:SHType
     B :: Basis
 end
 struct GSH <:SHType end
+Base.broadcastable(S::SHType) = Ref(S)
 
 export monopolarharmonics
 export monopolarharmonics!
@@ -113,6 +114,18 @@ function kronindex(::VSH, ind11, ind12, ind21, ind22)
     @assert -1 <= ind21 <= 1 "ind21 must satisfy -1 ≤ ind21 ≤ 1"
     @assert -1 <= ind22 <= 1 "ind22 must satisfy -1 ≤ ind22 ≤ 1"
     CartesianIndex(_kronindex(ind11, ind21), _kronindex(ind12, ind22))
+end
+
+function Broadcast.broadcasted(::Broadcast.DefaultArrayStyle{1}, kronindex, ::Base.Ref{GSH}, i1::Integer, r2::AbstractUnitRange{<:Integer})
+    ind1 = kronindex(GSH(), i1, first(r2))
+    ind2 = kronindex(GSH(), i1, last(r2))
+    ind1:ind2
+end
+function Broadcast.broadcasted(::Broadcast.DefaultArrayStyle{1}, kronindex, ::Base.Ref{GSH}, r1::AbstractUnitRange{<:Integer}, r2::Union{Integer, AbstractUnitRange{<:Integer}})
+    ind1 = kronindex(GSH(), first(r1), first(r2))
+    ind2 = kronindex(GSH(), last(r1), last(r2))
+    s = length(r1) == 1 ? 1 : length(r2) == 1 ? 3 : 4
+    ind1:s:ind2
 end
 
 _containertype(::Type{T}, ::Any) where {T} = Vector{T}
