@@ -111,6 +111,68 @@ end
             @test kronindex(VSH(PB(), Polar()), Tuple(t)...) == ind
         end
     end
+
+    @testset "broadcasting" begin
+        @testset "GSH" begin
+            for r1_st in -1:1, r1_end in -1:1
+                r1 = r1_st:r1_end
+                for i2 in -1:1
+                    ki = kronindex.(GSH(), r1, i2)
+                    @test ki == kronindex.(GSH(), collect(r1), collect(i2))
+                    @test length(ki) == length(r1)
+                    for (ind, i1) in enumerate(r1)
+                        @test ki[ind] == kronindex(GSH(), i1, i2)
+                    end
+                end
+            end
+            for r2_st in -1:1, r2_end in -1:1
+                r2 = r2_st:r2_end
+                for i1 in -1:1
+                    ki = kronindex.(GSH(), i1, r2)
+                    @test ki == kronindex.(GSH(), collect(i1), collect(r2))
+                    @test length(ki) == length(r2)
+                    for (ind, i2) in enumerate(r2)
+                        @test ki[ind] == kronindex(GSH(), i1, i2)
+                    end
+                end
+            end
+            for r2_st in -1:1, r2_end in -1:1
+                r2 = r2_st:r2_end
+                for r1_st in -1:1, r1_end in -1:1
+                    r1 = r1_st:r1_end
+                    if length(r1) != 1 && length(r2) != 1 && length(r1) != length(r2)
+                        continue
+                    end
+                    @inferred Broadcast.broadcast(kronindex, Ref(GSH()), r1, r2)
+                    ki = kronindex.(GSH(), r1, r2)
+                    @test ki == kronindex.(GSH(), collect(r1), collect(r2))
+                    els = ((x,y) -> (x,y)).(r1,r2)
+                    for (ind, (i1, i2)) in enumerate(els) 
+                        @test ki[ind] == kronindex(GSH(), i1, i2)
+                    end
+                    if length(r2) == 1
+                        @test length(ki) == length(r1)
+                        for (ind, i1) in enumerate(r1)
+                            @test ki[ind] == kronindex.(GSH(), i1, r2)[1]
+                        end
+                    end
+                    if length(r1) == 1
+                        @test length(ki) == length(r2)
+                        for (ind, i2) in enumerate(r2)
+                            @test ki[ind] == kronindex.(GSH(), r1, i2)[1]
+                        end
+                    end
+                    if length(r1) == 1 && length(r2) == 1
+                        @test length(ki) == 1
+                        @test ki[1] == kronindex(GSH(), first(r1), first(r2))
+                    end
+                    if length(r1) == 0 || length(r2) == 0
+                        @test length(ki) == 0
+                    end
+                end
+            end
+        end
+    end
 end
 
 @testset "monopolarharmonics" begin
