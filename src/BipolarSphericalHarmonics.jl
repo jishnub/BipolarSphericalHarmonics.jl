@@ -372,15 +372,15 @@ const BasisPhase = SVector{9,Int}([(-1)^(α1 + α2) for α1 in -1:1, α2 in -1:1
 const VSHIndexPhase = BasisPhase'
 const BasisPhase_VSHIndexPhase = BasisPhase*VSHIndexPhase
 
-_reverse(Y::SVector) = reverse(Y)
-# reverse for SMatrix is not implemented efficiently
-# This workaround might not be necessary after https://github.com/JuliaArrays/StaticArrays.jl/pull/910 is merged
-_reverse(Y::SMatrix; dims = :) = reverse!(MMatrix(Y); dims = dims)
+_reverse(Y::SArray; dims = :) = _reverse(Y, dims)
+# special case this to use the reverse(::StaticArray) method defined by StaticArrays
+_reverse(Y::SArray, ::Colon) = reverse(Y)
+_reverse(Y::SArray, dims) = reverse(Y, dims = dims)
 _reverse(Y::Diagonal{<:Any,<:SVector}) = Diagonal(reverse(diag(Y)))
 
 _conjphase(Y, phase, ::SH) = conj(Y) .* phase
 _conjphase(Y, phase, ::GSH) = conj(_reverse(Y)) .* BasisPhase .* phase
-_conjphase(Y, phase, ::VSH{PB, SphericalCovariant}) = (A = conj!(_reverse(Y)); (@. A *= BasisPhase * phase); A)
+_conjphase(Y, phase, ::VSH{PB, SphericalCovariant}) = conj(_reverse(Y)) .* BasisPhase .* phase
 function _conjphase(Y, phase, ::VSH{PB, HelicityCovariant})
     D = conj(_reverse(Y))
     Diagonal(diag(D) .* BasisPhase .* phase)
@@ -391,7 +391,7 @@ function _conjphase(Y, phase, ::VSH{<:Any, <:Union{SphericalCovariant, HelicityC
     A .*= BasisPhase_VSHIndexPhase * phase
     A
 end
-_conjphase(Y, phase, ::VSH{<:Any, <:Union{Cartesian, Polar}}) = (A = conj(Y); A .* VSHIndexPhase .* phase)
+_conjphase(Y, phase, ::VSH{<:Any, <:Union{Cartesian, Polar}}) = conj(Y) .* VSHIndexPhase .* phase
 
 """
     biposh!(Y12::AbstractVetor, B::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
