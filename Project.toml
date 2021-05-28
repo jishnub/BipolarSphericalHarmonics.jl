@@ -1,7 +1,7 @@
 name = "BipolarSphericalHarmonics"
 uuid = "e22a7426-82a6-487a-9ac6-2ced2976a2d6"
 authors = ["jishnub <jishnub@users.noreply.github.com> and contributors"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
