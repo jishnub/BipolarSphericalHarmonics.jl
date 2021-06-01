@@ -19,11 +19,7 @@ using WignerD
 
 using Aqua
 @testset "project quality" begin
-    if VERSION >= v"1.6"
-        Aqua.test_all(BipolarSphericalHarmonics, ambiguities = (recursive = false,))
-    else
-        Aqua.test_all(BipolarSphericalHarmonics, ambiguities = false)
-    end
+    Aqua.test_all(BipolarSphericalHarmonics)
 end
 
 isapproxdefault(x, y) = isapprox(x, y, atol = 1e-14, rtol = 1e-8)
@@ -147,7 +143,7 @@ end
                     ki = kronindex.(GSH(), r1, r2)
                     @test ki == kronindex.(GSH(), collect(r1), collect(r2))
                     els = ((x,y) -> (x,y)).(r1,r2)
-                    for (ind, (i1, i2)) in enumerate(els) 
+                    for (ind, (i1, i2)) in enumerate(els)
                         @test ki[ind] == kronindex(GSH(), i1, i2)
                     end
                     if length(r2) == 1
@@ -365,6 +361,12 @@ end
     for (ind, (l1, l2)) in enumerate(l1l2modes)
         Y2 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, jrange, 0, l1, l2)
         @test isapproxdefault(Y[ind], Y2)
+    end
+
+    jₒjₛ_allmodes = L2L1Triangle(1:50, 2, 1:52)
+    Y12 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, 2, 0, jₒjₛ_allmodes)
+    for (ind,(j2,j1)) in enumerate(jₒjₛ_allmodes)
+        @test Y12[ind] ≈ biposh(SH(), θ1, ϕ1, θ2, ϕ2, 2, 0, j2, j1)
     end
 end
 
