@@ -192,8 +192,7 @@ function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1, j2)
 end
 
 function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1j2modes...)
-    j1j2 = _j12max(j1j2modes...)
-    monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, j1j2...)
+    monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, _j12max(j1j2modes...)...)
 end
 
 monopolarharmonics(B::BSHCache) = getY(B.S1), getY(B.S2)
@@ -352,8 +351,7 @@ biposh(SHT::SHType, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes...) = _biposh(SHT, θ1
     TM = _maybestripwrapper(T, _zerostype(T, jm_modes), jm...)
     M = Vector{Union{TM, Nothing}}(undef, length(j1j2modes))
     for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
-        Bel = biposh(B, θ1, ϕ1, θ2, ϕ2, jm..., j1, j2)
-        M[indj1j2] = Bel
+        M[indj1j2] = biposh(B, θ1, ϕ1, θ2, ϕ2, jm..., j1, j2)
     end
     _maybewrapj2j1(M, j1j2modes)
 end
