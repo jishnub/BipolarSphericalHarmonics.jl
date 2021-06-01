@@ -1,6 +1,7 @@
 module BipolarSphericalHarmonics
 
 using SphericalHarmonicModes
+using SphericalHarmonicModes: AbstractTriangleIterator
 using SphericalHarmonicArrays
 using SphericalHarmonics
 using SphericalHarmonics: NorthPole, SouthPole, getY
@@ -144,7 +145,6 @@ _j1j2(::BSHCache, j1, j2) = (ML(ZeroTo(j1)),), (ML(ZeroTo(j2)),)
 _j1j2(::BSHCache) = (), ()
 _j1j2(B::BSHCache, j1j2modes) = _j1j2(B, _j12max(j1j2modes)...)
 
-_j12max(j1j2modes::L2L1Triangle) = maximum(l2_range(j1j2modes)), maximum(l1_range(j1j2modes))
 _j12max(j1j2modes) = maximum(first, j1j2modes), maximum(last, j1j2modes)
 
 """
@@ -207,8 +207,8 @@ degreerange(j1, j2) = degreerange(j1, j2, 0)
 
 neg1pow(x::Integer) = isodd(x) ? -1 : 1
 
-_maybewrapj2j1(M, modes::L2L1Triangle) = SHArray(M, modes)
-_maybewrapj2j1(M, modes) = M
+_maybewrapj1j2(M, modes::AbstractTriangleIterator) = SHArray(M, modes)
+_maybewrapj1j2(M, modes) = M
 
 _modes(::Colon, ::Colon, j1, j2) = LM(degreerange(j1, j2))
 _modes(::Colon, m::Union{Integer, AbstractUnitRange{<:Integer}}, j1, j2) = LM(degreerange(j1, j2, m), m)
@@ -312,7 +312,7 @@ biposh_flippoints(B12::BSHCache, B21::BSHCache, θ1, ϕ1, θ2, ϕ2, jm::LM, j1, 
             Y21[indj1j2] = biposh(B21, θ2, ϕ2, θ1, ϕ1, jm..., j1, j2)
         end
     end
-    _maybewrapj2j1(Y12, j1j2modes), _maybewrapj2j1(Y21, j1j2modes)
+    _maybewrapj1j2(Y12, j1j2modes), _maybewrapj1j2(Y21, j1j2modes)
 end
 biposh_flippoints(B12::BSHCache, B21::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes) =
     _biposh_flippoints_j1j2modes(B12, B21, θ1, ϕ1, θ2, ϕ2, j1j2modes, j, m)
@@ -353,7 +353,7 @@ biposh(SHT::SHType, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes...) = _biposh(SHT, θ1
     for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
         M[indj1j2] = biposh(B, θ1, ϕ1, θ2, ϕ2, jm..., j1, j2)
     end
-    _maybewrapj2j1(M, j1j2modes)
+    _maybewrapj1j2(M, j1j2modes)
 end
 biposh(B::BSHCache, θ1, ϕ1, θ2, ϕ2, j, m, j1j2modes) = _biposh_j1j2modes(B, θ1, ϕ1, θ2, ϕ2, j1j2modes, j, m)
 biposh(B::BSHCache, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes) = _biposh_j1j2modes(B, θ1, ϕ1, θ2, ϕ2, j1j2modes, jm)

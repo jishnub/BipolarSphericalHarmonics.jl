@@ -15,7 +15,7 @@ VectorSphericalHarmonics = "4b2bd704-7189-418b-a6ce-5ef15384b069"
 [compat]
 SHTOOLS = "1.2"
 SphericalHarmonicArrays = "0.4.9"
-SphericalHarmonicModes = "0.4.13"
+SphericalHarmonicModes = "0.4.15"
 SphericalHarmonics = "0.1.14"
 StaticArrays = "1.2.1"
 VectorSphericalHarmonics = "0.1.5"
