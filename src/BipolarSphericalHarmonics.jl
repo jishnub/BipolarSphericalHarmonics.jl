@@ -136,15 +136,15 @@ _container(el, modes::LM{SingleValuedRange, SingleValuedRange}) = MVector{1,type
 _zerostype(::Type{T}, modes) where {T} = SHArray{T, 1, _containertype(T, modes), Tuple{typeof(modes)}}
 _zeros(::Type{T}, modes) where {T} = SHArray(_container(zero(T), modes), modes)
 
-_maybestripwrapper(T, ZT, j::Integer, m::Integer) = T
+_maybestripwrapper(T, ZT, ::Integer, ::Integer) = T
 _maybestripwrapper(T, ZT, jm...) = ZT
 
-_j1j2(B::BSHCache{<:Any, SH}, j1, j2) = (j1,), (j2,)
-_j1j2(B::BSHCache, j1, j2) = (ML(ZeroTo(j1)),), (ML(ZeroTo(j2)),)
-_j1j2(B::BSHCache) = (), ()
+_j1j2(::BSHCache{<:Any, SH}, j1, j2) = (j1,), (j2,)
+_j1j2(::BSHCache, j1, j2) = (ML(ZeroTo(j1)),), (ML(ZeroTo(j2)),)
+_j1j2(::BSHCache) = (), ()
 _j1j2(B::BSHCache, j1j2modes) = _j1j2(B, _j12max(j1j2modes)...)
 
-_j12max(j1j2modes::L2L1Triangle) = maximum(l1_range(j1j2modes)), maximum(l2_range(j1j2modes))
+_j12max(j1j2modes::L2L1Triangle) = maximum(l2_range(j1j2modes)), maximum(l1_range(j1j2modes))
 _j12max(j1j2modes) = maximum(first, j1j2modes), maximum(last, j1j2modes)
 
 """
@@ -191,8 +191,9 @@ function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1, j2)
     return B
 end
 
-function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1j2modes)
-    monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, _j12max(j1j2modes)...)
+function monopolarharmonics(SHT::SHType, θ1, ϕ1, θ2, ϕ2, j1j2modes...)
+    j1j2 = _j12max(j1j2modes...)
+    monopolarharmonics(SHT, θ1, ϕ1, θ2, ϕ2, j1j2...)
 end
 
 monopolarharmonics(B::BSHCache) = getY(B.S1), getY(B.S2)
@@ -351,7 +352,8 @@ biposh(SHT::SHType, θ1, ϕ1, θ2, ϕ2, jm::LM, j1j2modes...) = _biposh(SHT, θ1
     TM = _maybestripwrapper(T, _zerostype(T, jm_modes), jm...)
     M = Vector{Union{TM, Nothing}}(undef, length(j1j2modes))
     for (indj1j2, (j1, j2)) in enumerate(j1j2modes)
-        M[indj1j2] = biposh(B, θ1, ϕ1, θ2, ϕ2, jm..., j1, j2)
+        Bel = biposh(B, θ1, ϕ1, θ2, ϕ2, jm..., j1, j2)
+        M[indj1j2] = Bel
     end
     _maybewrapj2j1(M, j1j2modes)
 end
