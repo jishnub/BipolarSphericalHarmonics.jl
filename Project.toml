@@ -1,7 +1,7 @@
 name = "BipolarSphericalHarmonics"
 uuid = "e22a7426-82a6-487a-9ac6-2ced2976a2d6"
 authors = ["jishnub <jishnub@users.noreply.github.com> and contributors"]
-version = "0.1.2"
+version = "0.1.3"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -15,7 +15,7 @@ VectorSphericalHarmonics = "4b2bd704-7189-418b-a6ce-5ef15384b069"
 [compat]
 SHTOOLS = "1.2"
 SphericalHarmonicArrays = "0.4.9"
-SphericalHarmonicModes = "0.4.13"
+SphericalHarmonicModes = "0.4.15"
 SphericalHarmonics = "0.1.14"
 StaticArrays = "1.2.1"
 VectorSphericalHarmonics = "0.1.5"

@@ -334,7 +334,8 @@ end
     l1range = 1:2; l2range = 1:2
     θ1, ϕ1 = pi/3, pi/4
     θ2, ϕ2 = pi/2, pi/3
-    for l1l2modes = [Iterators.product(l1range, l2range), L2L1Triangle(0:1, 1, 0:1)]
+    for l1l2modes = Any[Iterators.product(l1range, l2range),
+            L2L1Triangle(0:1, 1, 0:1), L1L2Triangle(0:1, 1, 0:1)]
         Y = biposh(SH(), θ1, ϕ1, θ2, ϕ2, :, :, l1l2modes)
         for (ind, (l1, l2)) in enumerate(l1l2modes)
             Y2 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, :, :, l1, l2)
@@ -367,6 +368,12 @@ end
     Y12 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, 2, 0, jₒjₛ_allmodes)
     for (ind,(j2,j1)) in enumerate(jₒjₛ_allmodes)
         @test Y12[ind] ≈ biposh(SH(), θ1, ϕ1, θ2, ϕ2, 2, 0, j2, j1)
+    end
+
+    jₒjₛ_allmodes = L1L2Triangle(1:50, 2, 1:52)
+    Y12 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, 2, 0, jₒjₛ_allmodes)
+    for (ind,(j1,j2)) in enumerate(jₒjₛ_allmodes)
+        @test Y12[ind] ≈ biposh(SH(), θ1, ϕ1, θ2, ϕ2, 2, 0, j1, j2)
     end
 end
 
