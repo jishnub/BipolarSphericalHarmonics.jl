@@ -103,18 +103,27 @@ function kronindex(::GSH, ind1, ind2)
     @assert -1 <= ind2 <= 1 "ind2 must satisfy -1 ≤ ind2 ≤ 1"
     _kronindex(ind1, ind2)
 end
+
+_basisindrange(::Union{Polar, Cartesian}) = 1:3
+_basisindrange(::Union{HelicityCovariant, SphericalCovariant}) = -1:1
+_basisindrange(::VSH{<:Any,B}) where {B} = _basisindrange(B())
+_shiftbasisinds(ind, ::Union{HelicityCovariant, SphericalCovariant}) = ind
+_shiftbasisinds(ind, ::Union{Polar, Cartesian}) = ind - 2 # move to the range -1:1
+_shiftbasisinds(ind, ::VSH{<:Any,B}) where {B} =  _shiftbasisinds(ind, B())
 """
     kronindex(::VSH, ind11, ind12, ind21, ind22)
 
 Given the indices of each `VSH` matrix, return the corresponding index of the bipolar spherical harmonic.
 Note that the indices correspond to `ℓ - j` for the `Irreducible` vector spherical harmonic ``\\mathbf{Y}^{\\ell}_{jm}(\\hat{n})``.
 """
-function kronindex(::VSH, ind11, ind12, ind21, ind22)
-    @assert -1 <= ind11 <= 1 "ind11 must satisfy -1 ≤ ind11 ≤ 1"
+function kronindex(Y::VSH, ind11, ind12, ind21, ind22)
+    @assert ind11 ∈ _basisindrange(Y) "ind11 must satisfy ind11 ∈ $(_basisindrange(Y))"
+    @assert ind21 ∈ _basisindrange(Y) "ind21 must satisfy ind21 ∈ $(_basisindrange(Y))"
     @assert -1 <= ind12 <= 1 "ind12 must satisfy -1 ≤ ind12 ≤ 1"
-    @assert -1 <= ind21 <= 1 "ind21 must satisfy -1 ≤ ind21 ≤ 1"
     @assert -1 <= ind22 <= 1 "ind22 must satisfy -1 ≤ ind22 ≤ 1"
-    CartesianIndex(_kronindex(ind11, ind21), _kronindex(ind12, ind22))
+    ind11t = _shiftbasisinds(ind11, Y)
+    ind21t = _shiftbasisinds(ind21, Y)
+    CartesianIndex(_kronindex(ind11t, ind21t), _kronindex(ind12, ind22))
 end
 
 function Broadcast.broadcasted(::Broadcast.DefaultArrayStyle{1}, kronindex, ::Base.Ref{GSH}, i1::Integer, r2::AbstractUnitRange{<:Integer})

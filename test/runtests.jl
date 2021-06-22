@@ -90,9 +90,19 @@ function _biposh(m, l1, l2, θ1, ϕ1, θ2, ϕ2, B = cache(SH(), max(l1, l2)))
 end
 
 @testset "kronindex" begin
-    r = Base.IdentityUnitRange(-1:1)
-    for (ind, (i, j)) in enumerate(Base.product(r,r))
-        @test kronindex(GSH(), j, i) == ind
+    @testset "GSH" begin
+        r = -1:1
+        for (ind, (i, j)) in enumerate(Base.product(r,r))
+            @test kronindex(GSH(), j, i) == ind
+        end
+
+        @testset "values" begin
+            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3
+            j, m, j1, j2 = 0, 0, 2, 2
+            B1 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            BG = biposh(GSH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BG[kronindex(GSH(), 0, 0)] ≈ B1 atol=1e-14 rtol=1e-8
+        end
     end
 
     @testset "VSH" begin
@@ -104,7 +114,34 @@ end
         S = [TupMerge((i,j)) for i in -1:1, j in -1:1];
         SS = kron(S, S);
         for (ind,t) in zip(CartesianIndices(SS), SS)
-            @test kronindex(VSH(PB(), Polar()), Tuple(t)...) == ind
+            ttup = Tuple(t)
+            @test kronindex(VSH(PB(), HelicityCovariant()), ttup...) == ind
+            @test kronindex(VSH(PB(), SphericalCovariant()), ttup...) == ind
+            indt11, indt12, indt21, indt22 = ttup
+            indt11s = indt11 + 2
+            indt21s = indt21 + 2
+            ttups = (indt11s, indt12, indt21s, indt22)
+            @test kronindex(VSH(PB(), Polar()), ttups...) == ind
+            @test kronindex(VSH(PB(), Cartesian()), ttups...) == ind
+        end
+
+        # For Hansen, H⁻¹ⱼₘ(̂n) = Yⱼₘ(̂n)̂n, therefore its radial component is Yⱼₘ(̂n)
+        # The radial basis vector ̂n is the same as the HelicityCovariant basis vector χ₀
+        # The Hansen vector H⁻¹ⱼₘ(̂n) is equivalent to the PB vector P⁰ⱼₘ(̂n)
+        @testset "values" begin
+            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3
+            j, m, j1, j2 = 0, 0, 2, 2
+            B1 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+
+            BV = biposh(VSH(Hansen(), Polar()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(Hansen(), Polar()), 1, -1, 1, -1)] ≈ B1 atol=1e-14 rtol=1e-8
+            BV = biposh(VSH(Hansen(), HelicityCovariant()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(Hansen(), HelicityCovariant()), 0, -1, 0, -1)] ≈ B1 atol=1e-14 rtol=1e-8
+
+            BV = biposh(VSH(PB(), Polar()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(PB(), Polar()), 1, 0, 1, 0)] ≈ B1 atol=1e-14 rtol=1e-8
+            BV = biposh(VSH(PB(), HelicityCovariant()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(PB(), HelicityCovariant()), 0, 0, 0, 0)] ≈ B1 atol=1e-14 rtol=1e-8
         end
     end
 
@@ -927,10 +964,10 @@ end
             α, β, γ = RSS′.theta1, RSS′.theta2, RSS′.theta3
             U′n1 = basisconversionmatrix(Cartesian(), HelicityCovariant(), θ1′, ϕ1′);
             U′n2 = basisconversionmatrix(Cartesian(), HelicityCovariant(), θ2′, ϕ2′);
-            M′1 = U′n1 * RSS′' * Un1'
-            M′2 = U′n2 * RSS′' * Un2'
+            M′1 = U′n1 * R11′ * Un1'
+            M′2 = U′n2 * R11′ * Un2'
             M′ = kron(M′1, M′2)
-            # For HelicityCovariant both R′1 and R′2, and consequently their kronecker product, are diagonal
+            # For HelicityCovariant both M′1 and M′2, and consequently their kronecker product, are diagonal
             @test M′ ≈ Diagonal(M′)
 
             x̂_n1′ = M′1 * x̂_n1
@@ -980,8 +1017,8 @@ end
                     RSS′ = inv(R)
                     α, β, γ = RSS′.theta1, RSS′.theta2, RSS′.theta3
                     U′n2_rot = basisconversionmatrix(Cartesian(), HelicityCovariant(), θ2′_rot, ϕ2′_rot);
-                    M′1 = U′n1 * RSS′' * Un1'
-                    M′2 = U′n2_rot * RSS′' * Un2_rot'
+                    M′1 = U′n1 * R * Un1'
+                    M′2 = U′n2_rot * R * Un2_rot'
                     M′ = kron(M′1, M′2)
                     @test M′ ≈ Diagonal(M′)
 
@@ -1075,8 +1112,8 @@ end
                 α, β, γ = RSS′.theta1, RSS′.theta2, RSS′.theta3
                 U′n1 = basisconversionmatrix(Cartesian(), B, θ1′, ϕ1′);
                 U′n2 = basisconversionmatrix(Cartesian(), B, θ2′, ϕ2′);
-                M′1 = U′n1 * RSS′' * Un1'
-                M′2 = U′n2 * RSS′' * Un2'
+                M′1 = U′n1 * R11′ * Un1'
+                M′2 = U′n2 * R11′ * Un2'
                 M′ = kron(M′1, M′2)
 
                 x̂_n1′ = M′1 * x̂_n1
@@ -1109,7 +1146,7 @@ end
                     Un2_rot = basisconversionmatrix(Cartesian(), B, θ2_rot, ϕ2_rot);
 
                     RSS′ = inv(R) # passive rotation that maps n2 to n2_rot
-                    M22_rot = Un2_rot * RSS′' * Un2'
+                    M22_rot = Un2_rot * R * Un2'
 
                     x̂_n2_rot = M22_rot * SVector{3}(1,0,0)
                     x̂x̂_n1n2_rot = kron(x̂_n1, x̂_n2_rot)
@@ -1127,8 +1164,8 @@ end
                         RSS′ = inv(R)
                         α, β, γ = RSS′.theta1, RSS′.theta2, RSS′.theta3
                         U′n2_rot = basisconversionmatrix(Cartesian(), B, θ2′_rot, ϕ2′_rot);
-                        M′1 = U′n1 * RSS′' * Un1'
-                        M′2 = U′n2_rot * RSS′' * Un2_rot'
+                        M′1 = U′n1 * R * Un1'
+                        M′2 = U′n2_rot * R * Un2_rot'
                         M′ = kron(M′1, M′2)
 
                         x̂_n1′ = M′1 * x̂_n1
@@ -1174,8 +1211,8 @@ end
                     R = rotn1n2n1′n2′(θ1_Mer, ϕ1_Mer, θ2_Mer, ϕ2_Mer, θ1_Equator, ϕ1_Equator, θ2_Equator, ϕ2_Equator)
                     RSS′ = inv(R)
                     α, β, γ = RSS′.theta1, RSS′.theta2, RSS′.theta3
-                    M′1 = U′n1 * RSS′' * Un1'
-                    M′2 = U′n2 * RSS′' * Un2'
+                    M′1 = U′n1 * R * Un1'
+                    M′2 = U′n2 * R * Un2'
                     M′ = kron(M′1, M′2)
 
                     for j in 0:lmax
