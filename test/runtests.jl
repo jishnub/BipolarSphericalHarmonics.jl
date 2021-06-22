@@ -90,9 +90,19 @@ function _biposh(m, l1, l2, θ1, ϕ1, θ2, ϕ2, B = cache(SH(), max(l1, l2)))
 end
 
 @testset "kronindex" begin
-    r = Base.IdentityUnitRange(-1:1)
-    for (ind, (i, j)) in enumerate(Base.product(r,r))
-        @test kronindex(GSH(), j, i) == ind
+    @testset "GSH" begin
+        r = -1:1
+        for (ind, (i, j)) in enumerate(Base.product(r,r))
+            @test kronindex(GSH(), j, i) == ind
+        end
+
+        @testset "values" begin
+            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3, 0
+            j, m, j1, j2 = 0, 0, 2, 2
+            B1 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            BG = biposh(GSH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BG[kronindex(GSH(), 0, 0)] ≈ B1 atol=1e-14 rtol=1e-8
+        end
     end
 
     @testset "VSH" begin
@@ -104,7 +114,34 @@ end
         S = [TupMerge((i,j)) for i in -1:1, j in -1:1];
         SS = kron(S, S);
         for (ind,t) in zip(CartesianIndices(SS), SS)
-            @test kronindex(VSH(PB(), Polar()), Tuple(t)...) == ind
+            ttup = Tuple(t)
+            @test kronindex(VSH(PB(), HelicityCovariant()), ttup...) == ind
+            @test kronindex(VSH(PB(), SphericalCovariant()), ttup...) == ind
+            indt11, indt12, indt21, indt22 = ttup
+            indt11s = indt11 + 2
+            indt21s = indt21 + 2
+            ttups = (indt11s, indt12, indt21s, indt22)
+            @test kronindex(VSH(PB(), Polar()), ttups...) == ind
+            @test kronindex(VSH(PB(), Cartesian()), ttups...) == ind
+        end
+
+        # For Hansen, H⁻¹ⱼₘ(̂n) = Yⱼₘ(̂n)̂n, therefore its radial component is Yⱼₘ(̂n)
+        # The radial basis vector ̂n is the same as the HelicityCovariant basis vector χ₀
+        # The Hansen vector H⁻¹ⱼₘ(̂n) is equivalent to the PB vector P⁰ⱼₘ(̂n)
+        @testset "values" begin
+            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3, 0
+            j, m, j1, j2 = 0, 0, 2, 2
+            B1 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+
+            BV = biposh(VSH(Hansen(), Polar()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(Hansen(), Polar()), 1, -1, 1, -1)] ≈ B1 atol=1e-14 rtol=1e-8
+            BV = biposh(VSH(Hansen(), HelicityCovariant()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(Hansen(), HelicityCovariant()), 0, -1, 0, -1)] ≈ B1 atol=1e-14 rtol=1e-8
+
+            BV = biposh(VSH(PB(), Polar()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(PB(), Polar()), 1, 0, 1, 0)] ≈ B1 atol=1e-14 rtol=1e-8
+            BV = biposh(VSH(PB(), HelicityCovariant()), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
+            @test BV[kronindex(VSH(PB(), HelicityCovariant()), 0, 0, 0, 0)] ≈ B1 atol=1e-14 rtol=1e-8
         end
     end
 
