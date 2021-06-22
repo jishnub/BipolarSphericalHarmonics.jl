@@ -97,7 +97,7 @@ end
         end
 
         @testset "values" begin
-            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3, 0
+            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3
             j, m, j1, j2 = 0, 0, 2, 2
             B1 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
             BG = biposh(GSH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
@@ -129,7 +129,7 @@ end
         # The radial basis vector ̂n is the same as the HelicityCovariant basis vector χ₀
         # The Hansen vector H⁻¹ⱼₘ(̂n) is equivalent to the PB vector P⁰ⱼₘ(̂n)
         @testset "values" begin
-            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3, 0
+            θ1, ϕ1, θ2, ϕ2 = pi/2, 0, pi/2, pi/3
             j, m, j1, j2 = 0, 0, 2, 2
             B1 = biposh(SH(), θ1, ϕ1, θ2, ϕ2, j, m, j1, j2)
 
