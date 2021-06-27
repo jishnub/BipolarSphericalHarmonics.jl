@@ -10,6 +10,7 @@ using VectorSphericalHarmonics
 using SHTOOLS
 using LinearAlgebra
 using StaticArrays
+using WignerSymbols
 using Base: @propagate_inbounds
 
 abstract type SHType end
@@ -562,18 +563,36 @@ end
 
 ##################################################################################################
 
-@inline function clebschgordan!(C::AbstractVector, w3j::AbstractVector, j1::Integer, m1::Integer, j2::Integer, m::Integer)
+@inline function clebschgordan!(C::AbstractVector, w3j::AbstractVector, j1::Integer, m1::Integer, j2::Integer, m::Integer;
+        primefactorization_cutoff = 160)
+
     m2 = m - m1
-    # Evaluate the Wigner 3j symbol
-    #   /  j  j1  j2 \
-    #   \ -m  m1  m2 /
-    _, jmin, jmax = SHTOOLS.Wigner3j!(w3j, j1, j2, -m, m1, m2)
-    jrange = jmin:jmax
+    jrange = max(abs(j1-j2), abs(m)):j1+j2
     @assert length(C) >= length(jrange) "Clebsch-Gordan vector does not contain enough elements"
 
-    phase = neg1pow(j1 - j2 + m)
-    @inbounds for (ind, j) in enumerate(jrange)
-        C[begin - 1 + ind] = w3j[begin - 1 + ind] * √(2j+1) * phase
+    if abs(j1) <= primefactorization_cutoff && abs(j2) <= primefactorization_cutoff
+        # Evaluate the Wigner 3j symbol
+        #   /  j  j1  j2 \
+        #   \ -m  m1  m2 /
+        SHTOOLS.Wigner3j!(w3j, j1, j2, -m, m1, m2)
+
+        phase = neg1pow(j1 - j2 + m)
+        jrange_SHTOOLS = intersect(jrange, 0:primefactorization_cutoff)
+        jrange_WigSym = primefactorization_cutoff+1:maximum(jrange)
+        @inbounds for (ind, j) in enumerate(jrange_SHTOOLS)
+            C[begin - 1 + ind] = w3j[begin - 1 + ind] * √(2j+1) * phase
+        end
+        if !isempty(jrange_WigSym)
+            indshift = length(jrange_SHTOOLS)
+            @inbounds for (indWS, j) in enumerate(jrange_WigSym)
+                ind = indWS + indshift
+                C[begin - 1 + ind] = clebschgordan(eltype(C), j1, m1, j2, m2, j, m)
+            end
+        end
+    else
+        @inbounds for (ind, j) in enumerate(jrange)
+            C[begin - 1 + ind] = clebschgordan(eltype(C), j1, m1, j2, m2, j, m)
+        end
     end
 
     return C
