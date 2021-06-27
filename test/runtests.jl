@@ -19,7 +19,7 @@ using WignerD
 
 using Aqua
 @testset "project quality" begin
-    Aqua.test_all(BipolarSphericalHarmonics)
+    Aqua.test_all(BipolarSphericalHarmonics, ambiguities=(recursive=false))
 end
 
 isapproxdefault(x, y) = isapprox(x, y, atol = 1e-14, rtol = 1e-8)
@@ -65,6 +65,21 @@ cosχ(θ1, ϕ1, θ2, ϕ2) = cos(θ1)cos(θ2) + sin(θ1)sin(θ2)cos(ϕ1-ϕ2)
             CG = clebschgordan(l1,l1,l2,m)
             @test CG[j] ≈ 1
         end
+    end
+
+    @testset "prime factorization" begin
+        C1 = zeros(200)
+        C2 = zero(C1)
+        W1 = zero(C1)
+        W2 = zero(C2)
+        BipolarSphericalHarmonics.clebschgordan!(C1, W1, 50, 0, 50, 0, primefactorization_cutoff = 0)
+        BipolarSphericalHarmonics.clebschgordan!(C2, W2, 50, 0, 50, 0, primefactorization_cutoff = 200)
+        @test C1 ≈ C2
+        C1 .= 0
+        C2 .= 0
+        BipolarSphericalHarmonics.clebschgordan!(C1, W1, 50, 50, 50, 50, primefactorization_cutoff = 0)
+        BipolarSphericalHarmonics.clebschgordan!(C2, W2, 50, 50, 50, 50, primefactorization_cutoff = 200)
+        @test C1 ≈ C2
     end
 end
 
