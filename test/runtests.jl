@@ -990,20 +990,25 @@ end
             # For HelicityCovariant both M′1 and M′2, and consequently their kronecker product, are diagonal
             @test M′ ≈ Diagonal(M′)
 
-            x̂_n1′ = M′1 * x̂_n1
-            x̂_n2′ = M′2 * x̂_n2
-            x̂x̂_n1′n2′ = kron(x̂_n1′, x̂_n2′)
+            x̂x̂_n1′n2′ = kron(M′1 * x̂_n1, M′2 * x̂_n2)
+            R⁻¹x̂R⁻¹x̂_n1n2 = kron(inv(M′1) * x̂_n1, inv(M′2) * x̂_n2)
 
             for j in 0:2lmax
                 Dp = wignerD!(Dvec[j], j, α, β, γ);
                 D = OffsetArray(Dp, -j:j, -j:j);
                 for l1 in 0:lmax, l2 in abs(j - l1):min(lmax, l1 + j)
                     for m in -j:j
-                        Y_rot = M′ * sum(D[m′, m] * biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m′, l1, l2) for m′ in -j:j)
+                        DY = sum(D[m′, m] * biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m′, l1, l2) for m′ in -j:j)
+                        Y_rot = M′ * DY
                         Y′ = biposh(B1′2′, θ1′, ϕ1′, θ2′, ϕ2′, j, m, l1, l2)
                         @test isapproxdefault(Y′, Y_rot)
-                        xxY12_rot = x̂x̂_n1n2' * sum(D[m′, m] * biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m′, l1, l2) for m′ in -j:j)
-                        xxY1′2′ = x̂x̂_n1′n2′' * biposh(B1′2′, θ1′, ϕ1′, θ2′, ϕ2′, j, m, l1, l2)
+                        # x′x′ : Bjm′(n1′,n2′) = M1xM2x : M1M2 ∑Dlmm′ Bjm′(n1,n2) = xx : ∑Dlmm′ Bjm′(n1,n2)
+                        xxY12_rot = x̂x̂_n1n2' * DY
+                        xxY1′2′ = x̂x̂_n1′n2′' * Y′
+                        @test isapproxdefault(xxY1′2′, xxY12_rot)
+                        # xx : Bjm′(n1′,n2′) = xx : M1M2 ∑Dlmm′ Bjm′(n1,n2) = M1⁻¹xM2⁻¹x : ∑Dlmm′ Bjm′(n1,n2)
+                        xxY12_rot = R⁻¹x̂R⁻¹x̂_n1n2' * DY
+                        xxY1′2′ = x̂x̂_n1n2' * Y′
                         @test isapproxdefault(xxY1′2′, xxY12_rot)
                     end
                 end
@@ -1052,12 +1057,13 @@ end
                         Dp = wignerD!(Dvec[j], j, α, β, γ);
                         D = OffsetArray(Dp, -j:j, -j:j)
                         for l1 in 0:lmax, l2 in abs(j - l1):min(lmax, l1 + j), m in -j:j
-                            RY12_rot = M′ * sum(D[m′, m] * biposh(B12_rot, θ1, ϕ1, θ2_rot, ϕ2_rot, j, m′, l1, l2) for m′ in -j:j)
+                            DY = sum(D[m′, m] * biposh(B12_rot, θ1, ϕ1, θ2_rot, ϕ2_rot, j, m′, l1, l2) for m′ in -j:j)
+                            RY12_rot = M′ * DY
                             Y1′2′_rot = biposh(B1′2′_rot, θ1′, ϕ1′, θ2′_rot, ϕ2′_rot, j, m, l1, l2)
                             @test isapproxdefault(Y1′2′_rot, RY12_rot)
-
-                            RxxY12_rot = x̂x̂_n1n2_rot' * sum(D[m′, m] * biposh(B12_rot, θ1, ϕ1, θ2_rot, ϕ2_rot, j, m′, l1, l2) for m′ in -j:j)
-                            xxY1′2′_rot = x̂x̂_n1′n2′_rot' * biposh(B1′2′_rot, θ1′, ϕ1′, θ2′_rot, ϕ2′_rot, j, m, l1, l2)
+                            # x′x′ : Bjm′(n1′,n2′) = M1xM2x : M1M2 ∑Dlmm′ Bjm′(n1,n2) = xx : ∑Dlmm′ Bjm′(n1,n2)
+                            RxxY12_rot = x̂x̂_n1n2_rot' * DY
+                            xxY1′2′_rot = x̂x̂_n1′n2′_rot' * Y1′2′_rot
                             @test isapproxdefault(xxY1′2′_rot, RxxY12_rot)
                         end
                     end
@@ -1139,19 +1145,27 @@ end
                 x̂_n1′ = M′1 * x̂_n1
                 x̂_n2′ = M′2 * x̂_n2
                 x̂x̂_n1′n2′ = kron(x̂_n1′, x̂_n2′)
+                R⁻¹x̂R⁻¹x̂_n1n2 = kron(inv(M′1) * x̂_n1, inv(M′2) * x̂_n2)
 
                 for j in 0:lmax
                     Dp = wignerD!(Dvec[j], j, α, β, γ);
                     D = OffsetArray(Dp, -j:j, -j:j);
                     for l1 in 0:lmax, l2 in abs(j - l1):min(lmax, l1 + j)
                         for m in -j:j
-                            RY = M′ * sum(D[m′, m] * biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m′, l1, l2) for m′ in -j:j)
+                            DY = sum(D[m′, m] * biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m′, l1, l2) for m′ in -j:j)
+                            RY = M′ * DY
                             Y′ = biposh(B1′2′, θ1′, ϕ1′, θ2′, ϕ2′, j, m, l1, l2)
                             @test isapproxdefault(Y′, RY)
 
-                            RxxY12 = x̂x̂_n1n2' * sum(D[m′, m] * biposh(B12, θ1, ϕ1, θ2, ϕ2, j, m′, l1, l2) for m′ in -j:j)
-                            xxY1′2′ = x̂x̂_n1′n2′' * biposh(B1′2′, θ1′, ϕ1′, θ2′, ϕ2′, j, m, l1, l2)
+                            # x′x′ : Bjm′(n1′,n2′) = M1xM2x : M1M2 ∑Dlmm′ Bjm′(n1,n2) = xx : ∑Dlmm′ Bjm′(n1,n2)
+                            RxxY12 = x̂x̂_n1n2' * DY
+                            xxY1′2′ = x̂x̂_n1′n2′' * Y′
                             @test isapproxdefault(xxY1′2′, RxxY12)
+
+                            # xx : Bjm′(n1′,n2′) = xx : M1M2 ∑Dlmm′ Bjm′(n1,n2) = M1⁻¹xM2⁻¹x : ∑Dlmm′ Bjm′(n1,n2)
+                            xxY12_rot = R⁻¹x̂R⁻¹x̂_n1n2' * DY
+                            xxY1′2′ = x̂x̂_n1n2' * Y′
+                            @test isapproxdefault(xxY1′2′, xxY12_rot)
                         end
                     end
                 end
@@ -1188,9 +1202,8 @@ end
                         M′2 = U′n2_rot * R * Un2_rot'
                         M′ = kron(M′1, M′2)
 
-                        x̂_n1′ = M′1 * x̂_n1
-                        x̂_n2′_rot = M′2 * x̂_n2_rot
-                        x̂x̂_n1′n2′_rot = kron(x̂_n1′, x̂_n2′_rot)
+                        x̂x̂_n1′n2′_rot = kron(M′1 * x̂_n1, M′2 * x̂_n2_rot)
+                        R⁻¹x̂R⁻¹x̂_n1n2_rot = kron(inv(M′1) * x̂_n1, inv(M′2) * x̂_n2_rot)
 
                         BipolarSphericalHarmonics.monopolarharmonics!(B1′2′_rot, θ1′, ϕ1′, θ2′_rot, ϕ2′_rot);
 
@@ -1198,13 +1211,20 @@ end
                             Dp = wignerD!(Dvec[j], j, α, β, γ);
                             D = OffsetArray(Dp, -j:j, -j:j)
                             for l1 in 0:2:lmax, l2 in abs(j - l1):2:min(lmax, l1 + j), m in -j:2:j
-                                RY12_rot = M′ * sum(D[m′, m] * biposh(B12_rot, θ1, ϕ1, θ2_rot, ϕ2_rot, j, m′, l1, l2) for m′ in -j:j)
+                                DY = sum(D[m′, m] * biposh(B12_rot, θ1, ϕ1, θ2_rot, ϕ2_rot, j, m′, l1, l2) for m′ in -j:j)
+                                RY12_rot = M′ * DY
                                 Y1′2′_rot = biposh(B1′2′_rot, θ1′, ϕ1′, θ2′_rot, ϕ2′_rot, j, m, l1, l2)
                                 @test isapproxdefault(Y1′2′_rot, RY12_rot)
 
-                                xxY1′2′_rot = x̂x̂_n1′n2′_rot' * biposh(B1′2′_rot, θ1′, ϕ1′, θ2′_rot, ϕ2′_rot, j, m, l1, l2)
-                                RxxY12_rot = x̂x̂_n1n2_rot' * sum(D[m′, m] * biposh(B12_rot, θ1, ϕ1, θ2_rot, ϕ2_rot, j, m′, l1, l2) for m′ in -j:j)
+                                # x′x′ : Bjm′(n1′,n2′) = M1xM2x : M1M2 ∑Dlmm′ Bjm′(n1,n2) = xx : ∑Dlmm′ Bjm′(n1,n2)
+                                xxY1′2′_rot = x̂x̂_n1′n2′_rot' * Y1′2′_rot
+                                RxxY12_rot = x̂x̂_n1n2_rot' * DY
                                 @test isapproxdefault(xxY1′2′_rot, RxxY12_rot)
+
+                                # xx : Bjm′(n1′,n2′) = xx : M1M2 ∑Dlmm′ Bjm′(n1,n2) = M1⁻¹xM2⁻¹x : ∑Dlmm′ Bjm′(n1,n2)
+                                xxY1′2′_rot = x̂x̂_n1n2_rot' * Y1′2′_rot
+                                R⁻¹xR⁻¹xY12_rot = R⁻¹x̂R⁻¹x̂_n1n2_rot' * DY
+                                @test isapproxdefault(xxY1′2′_rot, R⁻¹xR⁻¹xY12_rot)
                             end
                         end
                     end
